@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 #  This file is part of pominabox.
 #  Copyright (C) 2017 Guy Martin <gmsoft@tuxicoman.be>
 #
@@ -16,26 +15,34 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+class config():
 
-import argparse
-import time
+    def __init__(self):
+        self.nodes = {};
+        self.database = {};
+        self.httpd_port = 8081
+
+    def nodes_add(self, name, url):
+        if name in self.nodes:
+            return [ False, 'Node already exists' ]
+        self.nodes[name] = { 'url' : url, 'enabled' : False }
+        return [ True, 'Node added' ]
+
+    def nodes_get(self):
+        return [ True, 'Node list', self.nodes ]
+
+    def nodes_enable(self, name):
+        if not name in self.nodes:
+            return [ False, 'Node does not exists' ]
+        node = self.nodes[name]
+        if node.enable:
+            return [ True, 'Node already enabled' ]
 
 
-import pominabox
-
-argparser = argparse.ArgumentParser(description='Archive server for pom-ng')
 
 
-if __name__ == "__main__":
-    args = argparser.parse_args()
-    config = pominabox.config()
-    httpsrv = pominabox.webserv(config)
-    httpsrv.run()
-    print("Pominabox started !")
-    while True:
-        try:
-            time.sleep(1)
-        except KeyboardInterrupt:
-            break
+    def httpd_port_get(self):
+        return self.httpd_port
 
-    httpsrv.kill()
+    def save():
+        return

@@ -15,11 +15,14 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import pominabox
+
 class config():
 
     def __init__(self):
-        self.nodes = {};
-        self.database = {};
+        self.nodes = {}
+        self.nodes_inst = {}
+        self.database = {}
         self.httpd_port = 8081
 
     def nodes_add(self, name, url):
@@ -35,11 +38,11 @@ class config():
         if not name in self.nodes:
             return [ False, 'Node does not exists' ]
         node = self.nodes[name]
-        if node.enable:
+        if node['enabled']:
             return [ True, 'Node already enabled' ]
-
-
-
+        self.nodes_inst[name] = pominabox.pomng(node['url'])
+        self.nodes_inst[name].enable()
+        return [ True, 'Node enabled' ]
 
     def httpd_port_get(self):
         return self.httpd_port

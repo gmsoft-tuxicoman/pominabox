@@ -49,4 +49,8 @@ class webapi():
             return self._return_result(self.config.nodes_add(name = params['name'], url = params['url']))
         elif method == "get":
             return self._return_result(self.config.nodes_get())
+        elif method == "enable":
+            if not 'name' in params:
+                return self._return_error("No node name specified")
+            return self._return_result(self.config.nodes_enable(params['name']))
         return self._return_error('No such method')

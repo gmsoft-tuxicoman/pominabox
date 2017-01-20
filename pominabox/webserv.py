@@ -23,39 +23,34 @@ import json
 import pominabox
 
 class webservHandler(http.server.BaseHTTPRequestHandler):
+  
+    def do_GET(self):
+        return self.do_req("GET")
 
     def do_POST(self):
-        data_len = int(self.headers['content-length'])
-        data = self.rfile.read(data_len)
+        return self.do_req("POST")
 
-        try:
-            params = json.loads(data.decode())
-        except ValueError:
-            self.send_response(400)
-            self.send_header('Content-Type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(bytes('Invalid JSON input\n', 'utf-8'))
-            return
+    def do_PUT(self):
+        return self.do_req("PUT")
+
+    def do_DELETE(self):
+        return self.do_req("DELETE")
+
+    def do_req(self, req_type):
+
+        data_len = 0
+        data = None
+
+        if 'content-length' in self.headers:
+            data_len = int(self.headers['content-length'])
+
+        if data_len > 0:
+            data = self.rfile.read(data_len)
 
 
-
-        return self.do_req(self.path, params)
-
-    def do_GET(self):
-        return self.do_req(self.path, None)
-
-    def do_req(self, path, data):
         req = self.path.split('/')
         if req[1] == 'api':
-            # methods starting with _ are private
-            if len(req) < 4 or req[2].startswith('_'):
-                self.send_response(400)
-                self.send_header('Content-Type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(bytes('No method specified\n', 'utf-8'))
-                return
-            self.do_api(req[2], req[3], data)
-            return
+            return self.do_api(req_type, req[2:], data)
  
         self.send_response(404)
         self.send_header('Content-Type', 'text/plain')
@@ -64,9 +59,20 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
 
         return
 
-    def do_api(self, endpoint, method, params):
+    def do_api(self, req_type, req, data):
+
+        params = {}
+        if data:
+            try:
+                params = json.loads(data.decode())
+            except ValueError:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({ 'status' : 'error', 'msg' : 'Malformed input JSON' }).encode())
+                return
         try:
-            api_func = getattr(self.webapi, endpoint)
+            api_func = getattr(self.webapi, req_type + '_' + req[0])
         except AttributeError:
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
@@ -78,13 +84,12 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(rsp).encode())
             return
 
-        retval = api_func(method, params)
-
+        retval = api_func(req[1:], params)
 
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps(retval).encode())
+        self.wfile.write((json.dumps(retval) + "\r\n").encode())
         return
 
 #    def log_request(self, code='-', size='-'):

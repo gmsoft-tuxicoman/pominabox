@@ -32,25 +32,63 @@ class webapi():
             v['value'] = ret[2]
         return v
 
-    def db(self, method, params):
-        if method == "status":
-            return { 'status' : 'ok' }
 
-        return self._return_error("No such method")
+    def PUT_nodes(self, req, params):
+        if len(req) < 1:
+            return self._return_error("No node name specified")
 
-    def nodes(self, method, params):
-        if method == "add":
-            if not params:
-                return self._return_error("No parameter provided")
-            if not 'url' in params:
-                return self._return_error("No url specified")
-            if not 'name' in params:
-                return self._return_error("No name specified")
-            return self._return_result(self.config.nodes_add(name = params['name'], url = params['url']))
-        elif method == "get":
-            return self._return_result(self.config.nodes_get())
-        elif method == "enable":
-            if not 'name' in params:
-                return self._return_error("No node name specified")
-            return self._return_result(self.config.nodes_enable(params['name']))
-        return self._return_error('No such method')
+        retval = [ True, 'Node parameters updated' ]
+        node_name = req[0]
+        nodes = self.config.nodes_get()[2]
+
+        # Check if it's a PUT for a node resource
+        if len(req) >= 2:
+            if not node_name in nodes:
+                return self._return_error("Node does not exists")
+            node = nodes[node_name]
+            if req[1] == 'events':
+                return self.PUT_nodes_event(node_name, req[2:], params)
+            return self._return_error("No such method")
+
+        # We are adding a node
+        if not params:
+            return self._return_error("No parameter provided")
+        if not 'url' in params:
+            return self._return_error("No url provided")
+
+        if node_name in nodes:
+            return self._return_error("Node already exists")
+
+        return self._return_result(self.config.nodes_add(name = node_name, url = params['url']))
+
+    def POST_nodes(self, req, params):
+        if not params:
+            return self._return_error("No parameter provided")
+        if len(req) < 1:
+            return self._return_error("No node name specified")
+
+        node_name = req[0]
+        nodes = self.config.nodes_get()[2]
+        if not node_name in nodes:
+            return self._return_error("Node does not exists")
+
+        node = nodes[node_name]
+
+        if 'enabled' in params and node['enabled'] != params['enabled']:
+            ret = self.config.nodes_enable(node_name, params['enabled'])
+            if not ret[0]:
+                return self._return_result(ret)
+
+        return { 'status' : 'ok', 'node' : self.config.nodes_get()[2][node_name] }
+
+
+    def GET_nodes(self, req, params):
+        return self._return_result(self.config.nodes_get())
+
+    def PUT_nodes_event(self, node_name, req, params):
+        if len(req) < 1:
+            return self._return_error("No node event name specified")
+        event_name = req[0]
+        return self._return_result(self.config.nodes_event_add(node_name, event_name))
+
+

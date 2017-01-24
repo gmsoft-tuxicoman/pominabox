@@ -19,13 +19,13 @@ import pominabox
 
 class config():
 
-    def __init__(self):
+    def __init__(self, httpd_port):
         self.nodes = {}
         self.nodes_inst = {}
-        self.database = {}
-        self.httpd_port = 8081
+        self.httpd_port = httpd_port
+        self.db = None
 
-    def nodes_add(self, name, url):
+    def pomng_node_add(self, name, url):
         if name in self.nodes:
             return [ False, 'Node already exists' ]
         if name == '*':
@@ -33,10 +33,10 @@ class config():
         self.nodes[name] = { 'url' : url, 'enabled' : False }
         return [ True, 'Node added' ]
 
-    def nodes_get(self):
+    def pomng_nodes_get(self):
         return [ True, 'Node list', self.nodes ]
 
-    def nodes_enable(self, name, enabled):
+    def pomng_node_enable(self, name, enabled):
         if not name in self.nodes:
             return [ False, 'Node does not exists' ]
         node = self.nodes[name]
@@ -46,7 +46,7 @@ class config():
             else:
                 return [ True, 'Node already disabled' ]
 
-        self.nodes_inst[name] = pominabox.pomng(node['url'])
+        self.nodes_inst[name] = pominabox.pomng(node['url'], self)
         ret = {}
         if enabled:
             ret = self.nodes_inst[name].enable()
@@ -56,20 +56,29 @@ class config():
             self.nodes[name]['enabled'] = enabled
         return ret
 
-    def nodes_event_add(self, node_name, event_name):
+    def pomng_node_event_add(self, node_name, event_name):
         node_inst = self.nodes_inst[node_name]
         return node_inst.event_add(event_name)
 
-    def nodes_event_remove(self, node_name, event_name):
+    def pomng_node_event_remove(self, node_name, event_name):
         node_inst = self.nodes_inst[node_name]
         return node_inst.event_remove(event_name)
 
-    def nodes_events_get(self, node_name, event_name):
+    def pomng_node_events_get(self, node_name, event_name):
         node_inst = self.nodes_inst[node_name]
         return node_inst.events_get()
 
     def httpd_port_get(self):
         return self.httpd_port
+
+    def db_nodes_set(self, db_nodes):
+        self.db = pominabox.db(db_nodes)
+        return self.es_nodes
+
+    def db_get(self):
+        if not self.db:
+            self.db = pominabox.db(['localhost'])
+        return self.db
 
     def save():
         return

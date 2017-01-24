@@ -19,3 +19,4 @@ from pominabox.webserv import webserv
 from pominabox.webapi import webapi
 from pominabox.config import config
 from pominabox.pomng import pomng
+from pominabox.db import db

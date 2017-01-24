@@ -39,7 +39,7 @@ class webapi():
 
         retval = [ True, 'Node parameters updated' ]
         node_name = req[0]
-        nodes = self.config.nodes_get()[2]
+        nodes = self.config.pomng_nodes_get()[2]
 
         # Check if it's a PUT for a node resource
         if len(req) >= 2:
@@ -59,7 +59,7 @@ class webapi():
         if node_name in nodes:
             return self._return_error("Node already exists")
 
-        return self._return_result(self.config.nodes_add(name = node_name, url = params['url']))
+        return self._return_result(self.config.pomng_node_add(name = node_name, url = params['url']))
 
     def POST_nodes(self, req, params):
         if not params:
@@ -68,27 +68,27 @@ class webapi():
             return self._return_error("No node name specified")
 
         node_name = req[0]
-        nodes = self.config.nodes_get()[2]
+        nodes = self.config.pomng_nodes_get()[2]
         if not node_name in nodes:
             return self._return_error("Node does not exists")
 
         node = nodes[node_name]
 
         if 'enabled' in params and node['enabled'] != params['enabled']:
-            ret = self.config.nodes_enable(node_name, params['enabled'])
+            ret = self.config.pomng_node_enable(node_name, params['enabled'])
             if not ret[0]:
                 return self._return_result(ret)
 
-        return { 'status' : 'ok', 'node' : self.config.nodes_get()[2][node_name] }
+        return { 'status' : 'ok', 'node' : self.config.pomng_nodes_get()[2][node_name] }
 
 
     def GET_nodes(self, req, params):
-        return self._return_result(self.config.nodes_get())
+        return self._return_result(self.config.pomng_nodes_get())
 
     def PUT_nodes_event(self, node_name, req, params):
         if len(req) < 1:
             return self._return_error("No node event name specified")
         event_name = req[0]
-        return self._return_result(self.config.nodes_event_add(node_name, event_name))
+        return self._return_result(self.config.pomng_node_event_add(node_name, event_name))
 
 

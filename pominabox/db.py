@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 #  This file is part of pominabox.
 #  Copyright (C) 2017 Guy Martin <gmsoft@tuxicoman.be>
 #
@@ -16,28 +15,16 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from elasticsearch import Elasticsearch
 
-import argparse
-import time
-import pominabox
+class db():
 
-argparser = argparse.ArgumentParser(description='Archive server for pom-ng')
-argparser.add_argument('--config', '-c', dest='config',  help='Configuration file')
-argparser.add_argument('--port', '-p', dest='httpd_port', help='Port to bind to', default=8081, type=int)
-argparser.add_argument('--elasticsearch', '-e', dest='es_nodes', help='Elastic search nodes', default='localhost')
+    def __init__(self, es_nodes):
+        self.es = Elasticsearch(es_nodes)
+        self.index = 'pominabox'
+        return
 
+    def put(self, doc_type, data):
+        ret = self.es.index(index=self.index, doc_type=doc_type, body=data)
+        print(ret)
 
-if __name__ == "__main__":
-    args = argparser.parse_args()
-    config = pominabox.config(httpd_port = args.httpd_port)
-
-    httpsrv = pominabox.webserv(config)
-    httpsrv.run()
-    print("Pominabox started !")
-    while True:
-        try:
-            time.sleep(1)
-        except KeyboardInterrupt:
-            break
-
-    httpsrv.kill()

@@ -23,7 +23,7 @@ import json
 import pominabox
 
 class webservHandler(http.server.BaseHTTPRequestHandler):
-  
+
     def do_GET(self):
         return self.do_req("GET")
 

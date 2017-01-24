@@ -22,11 +22,13 @@ import time
 
 class pomng():
 
-    def __init__(self, url):
+    def __init__(self, url, config):
         self.url = url
+        self.config = config
         self.proxy = None
         self.timeout = 60
         self.events = {}
+        self.listeners = {}
         self.monitor_session = -1
         return
 
@@ -45,6 +47,7 @@ class pomng():
         # Listen to all the events
         for event_name in self.events:
             self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", True, True)
+            self.listeners[self.events[event_name]] = event_name
 
         return [ True, "Node version " + version ]
 
@@ -56,11 +59,19 @@ class pomng():
         while True:
             try:
                 res = pollProxy.monitor.poll(sessionID)
-                print(res)
             except Exception as e:
                 print("Error while polling " + self.url + " : " + str(e))
                 time.sleep(1)
                 continue
+            if 'events' in res:
+                for evt in res['events']:
+                    self._process_event(evt)
+
+    def _process_event(self, event):
+        listener_id = event['listeners'][0]
+        db = self.config.db_get()
+        db.put(self.listeners[listener_id], event['data'])
+        return True
 
     def event_add(self, event_name):
         if event_name in self.events:
@@ -69,7 +80,8 @@ class pomng():
         self.events[event_name] = True
 
         if self.monitor_session != -1:
-            self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", True, True)
+            self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", False, True)
+            self.listeners[self.events[event_name]] = event_name
 
         return [ True, "Event monitoring started" ]
 
@@ -79,6 +91,7 @@ class pomng():
 
         listener_id = self.events[event_name]
         del self.events[event_name]
+        del self.listeners[listener_id]
         if self.monitor_session != -1:
             self.proxy.monitor.eventRemoveListener(self.monitor_session, listener_id)
 

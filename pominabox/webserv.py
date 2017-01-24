@@ -20,11 +20,24 @@ import http.server
 import threading
 import socketserver
 import json
+import os
 import pominabox
 
 class webservHandler(http.server.BaseHTTPRequestHandler):
 
+    server_version = 'Pominabox'
+
     def do_GET(self):
+
+        if self.path == '/':
+            self.send_response(302)
+            self.send_header('Location', '/ui/index.html')
+            self.end_headers()
+            return
+
+        if self.path.startswith('/ui/'):
+            return self.do_ui(self.path[4:])
+
         return self.do_req("GET")
 
     def do_POST(self):
@@ -46,7 +59,6 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
 
         if data_len > 0:
             data = self.rfile.read(data_len)
-
 
         req = self.path.split('/')
         if req[1] == 'api':
@@ -92,6 +104,30 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write((json.dumps(retval) + "\r\n").encode())
         return
 
+    def do_ui(self, path):
+        ui_dir = self.config.web_ui_dir()
+        fpath = os.path.join(ui_dir, path)
+        if not os.path.normpath(fpath).startswith(ui_dir):
+            self.send_response(400)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(bytes("Bad request", "utf-8"))
+            return
+        try:
+            f = open(fpath, mode='rb')
+        except Exception as e:
+            self.send_response(404)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(bytes(str(e), "utf-8"))
+            return
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.end_headers()
+        self.wfile.write(f.read())
+        f.close()
+
 #    def log_request(self, code='-', size='-'):
 #        return
 
@@ -105,6 +141,7 @@ class webserv():
         self.port = config.httpd_port_get()
         self.handler = webservHandler
         self.handler.webapi = pominabox.webapi(config)
+        self.handler.config = config
         self.httpd = ThreadedTCPServer(("", self.port), self.handler)
 
     def run(self):

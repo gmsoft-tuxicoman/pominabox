@@ -16,13 +16,15 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import pominabox
+import os
 
 class config():
 
-    def __init__(self, httpd_port):
+    def __init__(self, args):
         self.nodes = {}
         self.nodes_inst = {}
-        self.httpd_port = httpd_port
+        self.httpd_port = args.httpd_port
+        self.ui_dir = os.path.normpath(args.ui_dir)
         self.db = None
 
     def pomng_node_add(self, name, url):
@@ -79,6 +81,9 @@ class config():
         if not self.db:
             self.db = pominabox.db(['localhost'])
         return self.db
+
+    def web_ui_dir(self):
+        return self.ui_dir
 
     def save():
         return

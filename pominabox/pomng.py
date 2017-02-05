@@ -22,34 +22,54 @@ import time
 
 class pomng():
 
-    def __init__(self, url, config):
-        self.url = url
+    def __init__(self, config):
         self.config = config
         self.proxy = None
         self.timeout = 60
         self.events = {}
         self.listeners = {}
         self.monitor_session = -1
+        self.url = None
+        self.enabled = False
         return
 
+    def set_url(self, url):
+        if url.endswith('/RPC2'):
+            self.url = url
+        elif url.endswith('/'):
+            self.url = url + 'RPC2'
+        else:
+            self.url = url + '/RPC2'
+        try:
+            self.proxy = xmlrpc.client.ServerProxy(self.url)
+        except Exception as e:
+            return [ False, "Error while setting the URL : " + str(e) ]
+        return [ True, "URL set to " + self.url ]
+
     def enable(self):
-        if self.proxy:
-            return True
-        self.proxy = xmlrpc.client.ServerProxy(self.url)
+        if not self.proxy:
+            return [ False, "Node URL not set" ]
         try:
             version = self.proxy.core.getVersion()
+            registry = self.proxy.registry.list()
         except Exception as e:
             return [ False, "Error while connecting to the node : " + str(e) ]
         print("Connected to " + self.url + " version " + version)
-        self.monitor_session = self.proxy.monitor.start(self.timeout)
-        _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
 
-        # Listen to all the events
-        for event_name in self.events:
-            self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", True, True)
-            self.listeners[self.events[event_name]] = event_name
+        evt_class = registry['classes']['event']
 
-        return [ True, "Node version " + version ]
+        print(evt_class)
+
+        if len(self.events) > 0:
+            self.monitor_session = self.proxy.monitor.start(self.timeout)
+            _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
+            for event_name in self.events:
+                self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", True, True)
+                self.listeners[self.events[event_name]] = event_name
+
+        self.enabled = True
+
+        return [ True, "Node version " + version, { "version" : version } ]
 
     def disable(self):
         print("TODO")
@@ -73,19 +93,24 @@ class pomng():
         db.put(self.listeners[listener_id], event['data'])
         return True
 
-    def event_add(self, event_name):
+    def event_enable(self, event_name):
         if event_name in self.events:
             return [ True, "Event already monitored" ]
 
         self.events[event_name] = True
 
-        if self.monitor_session != -1:
+        # No event were being listened to and the node was enabled
+        if self.enabled:
+            if self.monitor_session == -1:
+                self.monitor_session = self.proxy.monitor.start(self.timeout)
+                _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
+
             self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", False, True)
             self.listeners[self.events[event_name]] = event_name
 
         return [ True, "Event monitoring started" ]
 
-    def event_remove(self, event_name):
+    def event_disable(self, event_name):
         if not event_name in self.events:
             return [ True, "Event isn't monitored" ]
 

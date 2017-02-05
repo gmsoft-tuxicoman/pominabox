@@ -33,10 +33,31 @@ class config():
         if name == '*':
             return [ False, 'Invalid node name' ]
         self.nodes[name] = { 'url' : url, 'enabled' : False }
+        self.nodes_inst[name] = pominabox.pomng(self)
+        ret = self.nodes_inst[name].set_url(url)
+        if not ret[0]:
+            return ret
         return [ True, 'Node added' ]
 
+    def pomng_node_remove(self, name):
+        if not name in self.nodes:
+            return [ False, 'Node does not exists' ]
+
+        del self.nodes_inst[name]
+        del self.nodes[name]
+        return [ True, 'Node removed' ]
+
+    def pomng_node_set_url(self, name, url):
+        if not name in self.nodes:
+            return [ False, 'Node does not exists' ]
+        ret = self.nodes_inst[name].set_url(url)
+        if not ret[0]:
+            return ret
+        self.nodes[name]['url'] = url
+        return ret
+
     def pomng_nodes_get(self):
-        return [ True, 'Node list', self.nodes ]
+        return [ True, 'Node list', { "nodes": self.nodes } ]
 
     def pomng_node_enable(self, name, enabled):
         if not name in self.nodes:
@@ -48,23 +69,25 @@ class config():
             else:
                 return [ True, 'Node already disabled' ]
 
-        self.nodes_inst[name] = pominabox.pomng(node['url'], self)
         ret = {}
         if enabled:
             ret = self.nodes_inst[name].enable()
+            if ret[0]:
+                # Update node informations
+                self.nodes[name].update(ret[2])
         else:
             ret = eelf.nodes_inst[name].disable()
         if ret[0]:
             self.nodes[name]['enabled'] = enabled
         return ret
 
-    def pomng_node_event_add(self, node_name, event_name):
+    def pomng_node_event_enable(self, node_name, event_name):
         node_inst = self.nodes_inst[node_name]
-        return node_inst.event_add(event_name)
+        return node_inst.event_enable(event_name)
 
-    def pomng_node_event_remove(self, node_name, event_name):
+    def pomng_node_event_disable(self, node_name, event_name):
         node_inst = self.nodes_inst[node_name]
-        return node_inst.event_remove(event_name)
+        return node_inst.event_disable(event_name)
 
     def pomng_node_events_get(self, node_name, event_name):
         node_inst = self.nodes_inst[node_name]

@@ -71,7 +71,7 @@ class webapi():
             if not ret[0]:
                 return self._return_result(ret)
 
-        return { 'status' : 'ok', 'node' : self.config.pomng_nodes_get()[2]['nodes'][node_name] }
+        return { 'status' : 'ok', 'msg' : ret[1], 'node' : self.config.pomng_nodes_get()[2]['nodes'][node_name] }
 
     def DELETE_nodes(self, req, params):
         if len(req) < 1:
@@ -82,6 +82,13 @@ class webapi():
 
 
     def GET_nodes(self, req, params):
+        if len(req) >= 1:
+            node_name = req[0]
+            nodes = self.config.pomng_nodes_get()[2]['nodes']
+            if not node_name in nodes:
+                return self._return_error("Node does not exists")
+            return self._return_result([ True, "Node details", nodes[node_name] ])
+
         return self._return_result(self.config.pomng_nodes_get())
 
     def PUT_nodes_event(self, node_name, req, params):

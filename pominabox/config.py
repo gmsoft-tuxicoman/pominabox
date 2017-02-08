@@ -32,12 +32,17 @@ class config():
             return [ False, 'Node already exists' ]
         if name == '*':
             return [ False, 'Invalid node name' ]
-        self.nodes[name] = { 'url' : url, 'enabled' : False }
-        self.nodes_inst[name] = pominabox.pomng(self)
-        ret = self.nodes_inst[name].set_url(url)
+        inst = pominabox.pomng(self, name)
+        ret = inst.set_url(url)
         if not ret[0]:
             return ret
-        return [ True, 'Node added' ]
+        ret = inst.enable()
+        if not ret[0]:
+            return ret
+        self.nodes[name] = { 'url' : url, 'enabled' : True }
+        self.nodes[name].update(ret[2])
+        self.nodes_inst[name] = inst
+        return ret
 
     def pomng_node_remove(self, name):
         if not name in self.nodes:
@@ -62,12 +67,6 @@ class config():
     def pomng_node_enable(self, name, enabled):
         if not name in self.nodes:
             return [ False, 'Node does not exists' ]
-        node = self.nodes[name]
-        if node['enabled'] == enabled:
-            if enabled:
-                return [ True, 'Node already enabled' ]
-            else:
-                return [ True, 'Node already disabled' ]
 
         ret = {}
         if enabled:
@@ -77,8 +76,6 @@ class config():
                 self.nodes[name].update(ret[2])
         else:
             ret = eelf.nodes_inst[name].disable()
-        if ret[0]:
-            self.nodes[name]['enabled'] = enabled
         return ret
 
     def pomng_node_event_enable(self, node_name, event_name):

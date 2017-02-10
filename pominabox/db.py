@@ -16,7 +16,9 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from elasticsearch import Elasticsearch
+from string import Template
 import time
+import re
 
 class db():
 
@@ -32,19 +34,15 @@ class db():
                     "properties" : {
                         "query_time" : {
                             "type" : "date",
-                            "doc_values" : True,
                         },
                         "response_time" : {
                             "type" : "date",
-                            "doc_values" : True
                         },
                         "client_addr" : {
                             "type" : "ip",
-                            "doc_values" : True
                         },
                         "server_addr" : {
                             "type" : "ip",
-                            "doc_values" : True
                         },
                         "query_headers" : {
                             "type" : "nested"
@@ -58,7 +56,7 @@ class db():
         }
 
         for m in settings['mappings']:
-            settings['mappings'][m]['properties'] = {
+            settings['mappings'][m]['properties'].update({
                 "pominabox" : {
                     "properties" : {
                         "event_ts" : {
@@ -67,7 +65,7 @@ class db():
                         }
                     }
                 }
-            }
+            })
         print(settings)
         ret = self.es.indices.create(index=self.index, ignore = 400, body=settings)
         print(ret)
@@ -92,3 +90,31 @@ class db():
         ret = self.es.index(index=self.index, doc_type=doc_type, body=data)
         print(ret)
 
+    def search_template(self, query):
+        if not 'input' in query:
+            return [ False, "No input parameter specified" ]
+
+        if not 'output' in query:
+            return [ False, "No output format specified" ]
+
+        # Create a template
+        fmt = query['output']['format']
+        s = Template(fmt)
+
+        # Find all the needed fields in that template
+        fields = re.findall('(?<!\$)\$(' + s.idpattern + ')', fmt)
+
+        # Add the fields in our query
+        query['input']['_source'] = fields
+
+        res = self.es.search(index=self.index, body=query['input'])
+
+
+        ret = []
+
+
+        hits = res['hits']['hits']
+        for hit in hits:
+            ret.append(s.safe_substitute(hit['_source']))
+
+        return '\n'.join(ret)

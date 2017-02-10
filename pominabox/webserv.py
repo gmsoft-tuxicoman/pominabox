@@ -91,7 +91,7 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             rsp = {
                 'status': 'error',
-                'msg': 'API endpoint ' + endpoint + ' does not exists'
+                'msg': 'API endpoint ' + req[0] + ' does not exists'
             }
             self.wfile.write(json.dumps(rsp).encode())
             return

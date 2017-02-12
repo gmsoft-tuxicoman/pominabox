@@ -49,7 +49,7 @@ class pomng():
 
     def enable(self):
         if self.enabled:
-            return [ True, "Node already enabled", { "version" : self.version, "events" : self.evt_info } ]
+            return [ True, "Node already enabled", { "version" : self.version, "events" : self.events } ]
 
         if not self.proxy:
             return [ False, "Node URL not set" ]
@@ -67,31 +67,36 @@ class pomng():
                 inst = self.proxy.registry.getInstance('event', evt)
             except Exception as e:
                 return [ False, "Error while fetching events parameters : " + str(e) ]
-            evt_info[evt] = inst['parameters']['description']['value']
+            evt_info[evt] = {
+                'description' : inst['parameters']['description']['value'],
+                'enabled' : False
+            }
 
         if len(self.events) > 0:
             self.monitor_session = self.proxy.monitor.start(self.timeout)
-            _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
+            self.tid = _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
             for event_name in self.events:
-                self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", True, True)
+                self.events[event_name]['listener_id'] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", True, True)
                 self.listeners[self.events[event_name]] = event_name
 
         self.enabled = True
         self.version = version
-        self.evt_info = evt_info
+        self.events = evt_info
 
         print("Connected to node " + self.name + " (" + self.url + ") version " + version)
 
         return [ True, "Node version " + version, { "version" : version, "events" : evt_info } ]
 
     def disable(self):
-        print("TODO")
+        self.enabled = False
         return
 
     def _monitor(self, sessionID, pollProxy):
-        while True:
+        while self.enabled:
             try:
                 res = pollProxy.monitor.poll(sessionID)
+                if not self.enabled:
+                    return
             except Exception as e:
                 print("Error while polling " + self.url + " : " + str(e))
                 time.sleep(1)
@@ -103,14 +108,18 @@ class pomng():
     def _process_event(self, event):
         listener_id = event['listeners'][0]
         db = self.config.db_get()
-        db.put(self.listeners[listener_id], event['data'], self.name)
+        db.put_event(self.listeners[listener_id], event['data'], self.name)
         return True
 
     def event_enable(self, event_name):
-        if event_name in self.events:
-            return [ True, "Event already monitored" ]
+        if not event_name in self.events:
+            return [ False, "Event does not exists" ]
 
-        self.events[event_name] = True
+        event = self.events[event_name]
+        if event['enabled']:
+            return [ True, 'Event already monitored' ]
+
+        event['enabled'] = True
 
         # No event were being listened to and the node was enabled
         if self.enabled:
@@ -119,21 +128,26 @@ class pomng():
                 _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
 
             print("Adding listener")
-            self.events[event_name] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", False, True)
-            self.listeners[self.events[event_name]] = event_name
+            listener_id = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", False, True)
+            self.events[event_name]['listener_id'] = listener_id
+            self.listeners[listener_id] = event_name
 
         return [ True, "Event monitoring started" ]
 
     def event_disable(self, event_name):
         if not event_name in self.events:
-            return [ True, "Event isn't monitored" ]
+            return [ False, "Event does not exists" ]
+
+        event = self.events[event_name]
+        if not event['enabled']:
+            return [ True, 'Event already not monitored' ]
 
         listener_id = self.events[event_name]
-        del self.events[event_name]
+        del self.events[event_name]['listener_id']
         del self.listeners[listener_id]
         if self.monitor_session != -1:
             self.proxy.monitor.eventRemoveListener(self.monitor_session, listener_id)
 
     def events_get(self):
-        return keys(self.events)
+        return self.events
 

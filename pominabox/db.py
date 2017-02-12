@@ -25,38 +25,38 @@ class db():
     def __init__(self, es_nodes):
         self.es = Elasticsearch(es_nodes)
         self.index = 'pominabox'
-        settings = {
-            "settings" : {
-                "number_of_replicas" : 0
-            },
-            "mappings" : {
-                "http_request" : {
-                    "properties" : {
-                        "query_time" : {
-                            "type" : "date",
-                        },
-                        "response_time" : {
-                            "type" : "date",
-                        },
-                        "client_addr" : {
-                            "type" : "ip",
-                        },
-                        "server_addr" : {
-                            "type" : "ip",
-                        },
-                        "query_headers" : {
-                            "type" : "nested"
-                        },
-                        "response_headers" : {
-                            "type" : "nested"
-                        }
+        self.settings = {
+            "number_of_replicas" : 0,
+            "number_of_shards" : 1
+        }
+
+        self.mappings = {
+            "http_request" : {
+                "properties" : {
+                    "query_time" : {
+                        "type" : "date",
+                    },
+                    "response_time" : {
+                        "type" : "date",
+                    },
+                    "client_addr" : {
+                        "type" : "ip",
+                    },
+                    "server_addr" : {
+                        "type" : "ip",
+                    },
+                    "query_headers" : {
+                        "type" : "nested"
+                    },
+                    "response_headers" : {
+                        "type" : "nested"
                     }
                 }
             }
         }
 
-        for m in settings['mappings']:
-            settings['mappings'][m]['properties'].update({
+        for m in self.mappings:
+            self.mappings[m]['properties'].update({
                 "pominabox" : {
                     "properties" : {
                         "event_ts" : {
@@ -66,15 +66,28 @@ class db():
                     }
                 }
             })
-        print(settings)
-        ret = self.es.indices.create(index=self.index, ignore = 400, body=settings)
+        ret = self.es.indices.create(index=self.index, ignore = 400, body={ 'settings' : self.settings, 'mappings' : self.mappings })
         print(ret)
+
+        self.indices = [ 'pominabox' ]
         return
 
     def _pomts_to_epochts(self, pomts):
         return int((pomts['sec'] * 1000) + (pomts['usec'] / 1000))
 
-    def put(self, doc_type, data, pomng_node):
+    def get(self, index, doc_type, doc_id):
+        ret = self.es.get(index=index, doc_type=doc_type, id=doc_id)
+        return ret['_source']
+
+    def put(self, index, doc_type, doc_id, data):
+        if not index in self.indices:
+            ret = self.es.indices.create(index=index, ignore=400, body={ 'settings' : self.settings })
+            print(ret)
+            self.indices.append(index)
+        ret = self.es.index(index=index, doc_type=doc_type, id=doc_id, body=data)
+
+
+    def put_event(self, doc_type, data, pomng_node):
 
         if doc_type == "http_request":
             if 'query_time' in data:

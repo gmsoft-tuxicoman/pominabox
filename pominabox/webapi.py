@@ -34,6 +34,18 @@ class webapi():
             v.update(ret[2])
         return v
 
+    def PUT_config(self, req, params):
+        if len(req) < 1:
+            return self._return_error("No config name specified")
+
+        return self._return_result(self.config.save(req[0]))
+
+    def GET_config(self, req, params):
+        if len(req) < 1:
+            return self._return_error("No config name specified")
+
+        return self._return_result(self.config.load(req[0]))
+
 
     def PUT_nodes(self, req, params):
         if len(req) < 1:
@@ -96,5 +108,18 @@ class webapi():
             return self._return_error("No node event name specified")
         event_name = req[0]
         return self._return_result(self.config.pomng_node_event_enable(node_name, event_name))
+
+    def POST_db(self, req, params):
+        if len(req) < 1:
+            return self._return_error("No action specified")
+
+        if req[0] == 'search_template':
+            return self.POST_db_search_template(req[1:], params)
+
+        return self._return_error("Invalid DB action")
+
+    def POST_db_search_template(self, req, params):
+        db = self.config.db_get()
+        return self._return_result([True, "Search result",  { 'results' : db.search_template(params) } ])
 
 

@@ -25,7 +25,8 @@ class config():
         self.nodes_inst = {}
         self.httpd_port = args.httpd_port
         self.ui_dir = os.path.normpath(args.ui_dir)
-        self.db = None
+        self.db = pominabox.db(['localhost'])
+        self.config_index = '.pominabox_config'
 
     def pomng_node_add(self, name, url):
         if name in self.nodes:
@@ -79,6 +80,8 @@ class config():
         return ret
 
     def pomng_node_event_enable(self, node_name, event_name):
+        if not node_name in self.nodes_inst:
+            return [ False, "Node does not exists" ]
         node_inst = self.nodes_inst[node_name]
         return node_inst.event_enable(event_name)
 
@@ -98,12 +101,64 @@ class config():
         return self.es_nodes
 
     def db_get(self):
-        if not self.db:
-            self.db = pominabox.db(['localhost'])
         return self.db
 
     def web_ui_dir(self):
         return self.ui_dir
 
-    def save():
-        return
+    def save(self, conf_name):
+        conf = {}
+        conf['nodes'] = {}
+        for node_name in self.nodes:
+            node = self.nodes[node_name]
+            conf['nodes'][node_name] = {
+                'url' : node['url'],
+                'enabled' : node['enabled'],
+                'events' : {}
+            }
+            for evt in node['events']:
+                conf['nodes'][node_name]['events'][evt] = {
+                    'description' : node['events'][evt]['description'],
+                    'enabled' : node['events'][evt]['enabled']
+                }
+
+        self.db.put(self.config_index, 'main_config', conf_name, conf)
+        return [ True, 'Config saved' ]
+
+    def load(self, conf_name):
+        self.reset()
+        ret = self.db.get(self.config_index, 'main_config', conf_name)
+        for node_name in ret['nodes']:
+
+            node = ret['nodes'][node_name]
+            node_info = {}
+            inst = pominabox.pomng(self, node_name)
+            ret = inst.set_url(node['url'])
+            if not ret[0]:
+                continue
+            if (node['enabled']):
+                ret = inst.enable()
+                if not ret[0]:
+                    continue
+                node_info = ret[2]
+
+            self.nodes[node_name] = node
+            self.nodes_inst[node_name] = inst
+
+            for evt in node['events']:
+                if evt in node_info:
+                    node_info['evt']['enabled'] = node['events']['enable']
+
+                if node['enabled'] and node['events'][evt]['enabled']:
+                    inst.event_enable(evt)
+
+            self.nodes[node_name].update(node_info)
+
+        return [ True, 'Configuration ' + conf_name + ' loaded' ]
+
+    def reset(self):
+        for node_name in self.nodes:
+            self.nodes_inst[node_name].disable()
+
+        self.nodes = {}
+        self.nodes_inst = {}

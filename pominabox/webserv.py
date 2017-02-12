@@ -98,10 +98,16 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
 
         retval = api_func(req[1:], params)
 
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write((json.dumps(retval) + "\r\n").encode())
+        self.send_response(retval[0])
+        if type(retval[1]) is dict:
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write((json.dumps(retval[1]) + "\r\n").encode())
+        else:
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(retval[1].encode())
+
         return
 
     def do_ui(self, path):

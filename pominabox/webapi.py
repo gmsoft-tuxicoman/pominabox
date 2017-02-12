@@ -23,71 +23,58 @@ class webapi():
     def __init__(self, config):
         self.config = config
 
-    def _return_error(self, msg):
-        return { 'status' : 'error', 'msg' : msg }
-
-    def _return_result(self, ret):
-        v = { 'status' : 'ok', 'msg' : ret[1] }
-        if not ret[0]:
-            v['status'] = 'error'
-        if len(ret) > 2:
-            v.update(ret[2])
-        return v
-
     def PUT_config(self, req, params):
         if len(req) < 1:
-            return self._return_error("No config name specified")
+            return [ 400, { 'msg' : 'No config name specified' } ]
 
-        return self._return_result(self.config.save(req[0]))
+        return self.config.save(req[0])
 
     def GET_config(self, req, params):
         if len(req) < 1:
-            return self._return_error("No config name specified")
+            return [ 400, { 'msg' : 'No config name specified' } ]
 
-        return self._return_result(self.config.load(req[0]))
+        return self.config.load(req[0])
 
 
     def PUT_nodes(self, req, params):
         if len(req) < 1:
-            return self._return_error("No node name specified")
+            return [ 400, { 'msg' : 'No node name specified' } ]
 
-        retval = [ True, 'Node parameters updated' ]
         node_name = req[0]
 
         # Check if it's a PUT for a node resource
         if len(req) >= 2:
             if req[1] == 'events':
                 return self.PUT_nodes_event(node_name, req[2:], params)
-            return self._return_error("No such method")
+            return [ 404, { 'msg' : 'No such method' } ]
 
         # We are adding a node
         if not params:
-            return self._return_error("No parameter provided")
+            return [ 400, { 'msg' : 'No parameter provided' } ]
 
         if not 'url' in params:
-            return self._return_error("No URL provided")
+            return [ 400, { 'msg' : 'No URL provided' } ]
 
-        return self._return_result(self.config.pomng_node_add(name = node_name, url = params['url']))
+        return self.config.pomng_node_add(name = node_name, url = params['url'])
 
 
     def POST_nodes(self, req, params):
         if not params:
-            return self._return_error("No parameter provided")
+            return [ 400, { 'msg' : 'No parameter provided' } ]
         if len(req) < 1:
-            return self._return_error("No node name specified")
+            return [ 400, { 'msg' : 'No node name specified' } ]
 
         node_name = req[0]
 
         if 'enabled' in params:
             ret = self.config.pomng_node_enable(node_name, params['enabled'])
-            if not ret[0]:
-                return self._return_result(ret)
+            return ret
 
-        return { 'status' : 'ok', 'msg' : ret[1], 'node' : self.config.pomng_nodes_get()[2]['nodes'][node_name] }
+        return [ 200, { 'msg' : ret[1], 'node' : self.config.pomng_nodes_get()[2]['nodes'][node_name] } ]
 
     def DELETE_nodes(self, req, params):
         if len(req) < 1:
-            return self._return_error("No node name specified")
+            return [ 400, { 'msg' : 'No node name specified' } ]
 
         node_name = req[0]
         return self.config.pomng_node_remove(node_name)
@@ -98,20 +85,20 @@ class webapi():
             node_name = req[0]
             nodes = self.config.pomng_nodes_get()[2]['nodes']
             if not node_name in nodes:
-                return self._return_error("Node does not exists")
-            return self._return_result([ True, "Node details", nodes[node_name] ])
+                return [ 404, { 'msg' : 'Node does not exists' } ]
+            return [ 200, { 'msg' : 'Node details', 'node' : nodes[node_name] } ]
 
-        return self._return_result(self.config.pomng_nodes_get())
+        return self.config.pomng_nodes_get()
 
     def PUT_nodes_event(self, node_name, req, params):
         if len(req) < 1:
-            return self._return_error("No node event name specified")
+            return [ 400, { 'msg' : 'No node event name specified' } ]
         event_name = req[0]
-        return self._return_result(self.config.pomng_node_event_enable(node_name, event_name))
+        return self.config.pomng_node_event_enable(node_name, event_name)
 
     def POST_db(self, req, params):
         if len(req) < 1:
-            return self._return_error("No action specified")
+            return [ 400, { 'msg' :'No action specified' } ]
 
         if req[0] == 'search_template':
             return self.POST_db_search_template(req[1:], params)
@@ -120,6 +107,6 @@ class webapi():
 
     def POST_db_search_template(self, req, params):
         db = self.config.db_get()
-        return self._return_result([True, "Search result",  { 'results' : db.search_template(params) } ])
+        return db.search_template(params)
 
 

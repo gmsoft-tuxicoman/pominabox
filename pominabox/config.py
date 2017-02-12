@@ -30,49 +30,52 @@ class config():
 
     def pomng_node_add(self, name, url):
         if name in self.nodes:
-            return [ False, 'Node already exists' ]
+            return [ 409, { 'msg' : 'Node already exists' } ]
         if name == '*':
-            return [ False, 'Invalid node name' ]
+            return [ 400, { 'msg' : 'Invalid node name' } ]
         inst = pominabox.pomng(self, name)
         ret = inst.set_url(url)
-        if not ret[0]:
+        if ret[0] != 200:
             return ret
         ret = inst.enable()
-        if not ret[0]:
+        if ret[0] != 200:
             return ret
         self.nodes[name] = { 'url' : url, 'enabled' : True }
-        self.nodes[name].update(ret[2])
+        del ret[1]['msg']
+        self.nodes[name].update(ret[1])
         self.nodes_inst[name] = inst
+        ret[0] = 201
+        ret[1]['msg'] = 'Node added'
         return ret
 
     def pomng_node_remove(self, name):
         if not name in self.nodes:
-            return [ False, 'Node does not exists' ]
+            return [ 409, { 'msg' : 'Node does not exists' } ]
 
         del self.nodes_inst[name]
         del self.nodes[name]
-        return [ True, 'Node removed' ]
+        return [ 200, { 'msg' : 'Node removed' } ]
 
     def pomng_node_set_url(self, name, url):
         if not name in self.nodes:
-            return [ False, 'Node does not exists' ]
+            return [ 400, { 'msg' : 'Node does not exists' } ]
         ret = self.nodes_inst[name].set_url(url)
-        if not ret[0]:
+        if ret[0] != 200:
             return ret
         self.nodes[name]['url'] = url
         return ret
 
     def pomng_nodes_get(self):
-        return [ True, 'Node list', { "nodes": self.nodes } ]
+        return [ 200, { 'msg' : 'Node list', "nodes": self.nodes } ]
 
     def pomng_node_enable(self, name, enabled):
         if not name in self.nodes:
-            return [ False, 'Node does not exists' ]
+            return [ 400, { 'msg' : 'Node does not exists' } ]
 
         ret = {}
         if enabled:
             ret = self.nodes_inst[name].enable()
-            if ret[0]:
+            if ret[0] == 200:
                 # Update node informations
                 self.nodes[name].update(ret[2])
         else:
@@ -81,7 +84,7 @@ class config():
 
     def pomng_node_event_enable(self, node_name, event_name):
         if not node_name in self.nodes_inst:
-            return [ False, "Node does not exists" ]
+            return [ 400, { 'msg' : 'Node does not exists' } ]
         node_inst = self.nodes_inst[node_name]
         return node_inst.event_enable(event_name)
 
@@ -123,7 +126,7 @@ class config():
                 }
 
         self.db.put(self.config_index, 'main_config', conf_name, conf)
-        return [ True, 'Config saved' ]
+        return [ 200, { 'msg' : 'Configuration saved' } ]
 
     def load(self, conf_name):
         self.reset()
@@ -134,13 +137,14 @@ class config():
             node_info = {}
             inst = pominabox.pomng(self, node_name)
             ret = inst.set_url(node['url'])
-            if not ret[0]:
+            if ret[0] != 200:
                 continue
             if (node['enabled']):
                 ret = inst.enable()
-                if not ret[0]:
+                if ret[0] != 200:
                     continue
-                node_info = ret[2]
+                del ret[1]['msg']
+                node_info = ret[1]
 
             self.nodes[node_name] = node
             self.nodes_inst[node_name] = inst
@@ -154,7 +158,7 @@ class config():
 
             self.nodes[node_name].update(node_info)
 
-        return [ True, 'Configuration ' + conf_name + ' loaded' ]
+        return [ 200, { 'msg' : 'Configuration ' + conf_name + ' loaded' } ]
 
     def reset(self):
         for node_name in self.nodes:

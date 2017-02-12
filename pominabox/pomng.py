@@ -44,20 +44,20 @@ class pomng():
         try:
             self.proxy = xmlrpc.client.ServerProxy(self.url)
         except Exception as e:
-            return [ False, "Error while setting the URL : " + str(e) ]
-        return [ True, "URL set to " + self.url ]
+            return [ 500, { 'msg' : 'Error while setting the URL : ' + str(e) } ]
+        return [ 200, { 'msg' : 'URL set to ' + self.url } ]
 
     def enable(self):
         if self.enabled:
-            return [ True, "Node already enabled", { "version" : self.version, "events" : self.events } ]
+            return [ 409, { 'msg' : 'Node already enabled', 'version' : self.version, 'events' : self.events } ]
 
         if not self.proxy:
-            return [ False, "Node URL not set" ]
+            return [ 400, { 'msg' : 'Node URL not set' } ]
         try:
             version = self.proxy.core.getVersion()
             registry = self.proxy.registry.list()
         except Exception as e:
-            return [ False, "Error while connecting to the node : " + str(e) ]
+            return [ 503, { 'msg' : 'Error while connecting to the node : ' + str(e) } ]
 
         events = registry['classes']['event']['instances']
         evt_info = {}
@@ -66,7 +66,7 @@ class pomng():
             try :
                 inst = self.proxy.registry.getInstance('event', evt)
             except Exception as e:
-                return [ False, "Error while fetching events parameters : " + str(e) ]
+                return [ 503,  { 'msg' : 'Error while fetching events parameters : ' + str(e) } ]
             evt_info[evt] = {
                 'description' : inst['parameters']['description']['value'],
                 'enabled' : False
@@ -85,7 +85,7 @@ class pomng():
 
         print("Connected to node " + self.name + " (" + self.url + ") version " + version)
 
-        return [ True, "Node version " + version, { "version" : version, "events" : evt_info } ]
+        return [ 200, { 'msg' : 'Node version ' + version, 'version' : version, 'events' : evt_info } ]
 
     def disable(self):
         self.enabled = False
@@ -113,11 +113,11 @@ class pomng():
 
     def event_enable(self, event_name):
         if not event_name in self.events:
-            return [ False, "Event does not exists" ]
+            return [ 400, { 'msg': 'Event does not exists' } ]
 
         event = self.events[event_name]
         if event['enabled']:
-            return [ True, 'Event already monitored' ]
+            return [ 409, { 'msg' : 'Event already monitored' } ]
 
         event['enabled'] = True
 
@@ -132,15 +132,15 @@ class pomng():
             self.events[event_name]['listener_id'] = listener_id
             self.listeners[listener_id] = event_name
 
-        return [ True, "Event monitoring started" ]
+        return [ 200, { 'msg' : 'Event monitoring started' } ]
 
     def event_disable(self, event_name):
         if not event_name in self.events:
-            return [ False, "Event does not exists" ]
+            return [ 400, { 'msg' : 'Event does not exists' } ]
 
         event = self.events[event_name]
         if not event['enabled']:
-            return [ True, 'Event already not monitored' ]
+            return [ 409, { 'msg' : 'Event already not monitored' } ]
 
         listener_id = self.events[event_name]
         del self.events[event_name]['listener_id']

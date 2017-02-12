@@ -67,7 +67,6 @@ class db():
                 }
             })
         ret = self.es.indices.create(index=self.index, ignore = 400, body={ 'settings' : self.settings, 'mappings' : self.mappings })
-        print(ret)
 
         self.indices = [ 'pominabox' ]
         return
@@ -105,10 +104,10 @@ class db():
 
     def search_template(self, query):
         if not 'input' in query:
-            return [ False, "No input parameter specified" ]
+            return [ 400, { 'msg' : 'No input parameter specified' } ]
 
         if not 'output' in query:
-            return [ False, "No output format specified" ]
+            return [ 400, { 'msg' : 'No output format specified' } ]
 
         # Create a template
         fmt = query['output']['format']
@@ -122,12 +121,10 @@ class db():
 
         res = self.es.search(index=self.index, body=query['input'])
 
-
         ret = []
-
 
         hits = res['hits']['hits']
         for hit in hits:
             ret.append(s.safe_substitute(hit['_source']))
 
-        return '\n'.join(ret)
+        return [ 200, '\n'.join(ret) ]

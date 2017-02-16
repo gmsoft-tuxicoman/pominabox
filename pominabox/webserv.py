@@ -27,6 +27,17 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
 
     server_version = 'Pominabox'
 
+    content_types = {
+        'css' : 'text/css',
+        'js' : 'application/javascript',
+        'html' : 'text/html',
+        'htm' : 'text/html',
+        'jpg' : 'image/jpeg',
+        'jpeg' : 'image/jpeg',
+        'png' : 'image/png',
+
+    }
+
     def do_GET(self):
 
         if self.path == '/':
@@ -129,7 +140,11 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
             return
 
         self.send_response(200)
-        self.send_header('Content-Type', 'text/html')
+        ext = path.split('.')[-1]
+        content_type = 'binary/octet-stream'
+        if ext in self.content_types:
+            content_type = self.content_types[ext]
+        self.send_header('Content-Type', content_type)
         self.end_headers()
         self.wfile.write(f.read())
         f.close()

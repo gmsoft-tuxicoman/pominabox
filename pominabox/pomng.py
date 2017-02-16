@@ -57,7 +57,7 @@ class pomng():
             version = self.proxy.core.getVersion()
             registry = self.proxy.registry.list()
         except Exception as e:
-            return [ 503, { 'msg' : 'Error while connecting to the node : ' + str(e) } ]
+            return [ 502, { 'msg' : 'Error while connecting to the node : ' + str(e) } ]
 
         events = registry['classes']['event']['instances']
         evt_info = {}
@@ -66,7 +66,7 @@ class pomng():
             try :
                 inst = self.proxy.registry.getInstance('event', evt)
             except Exception as e:
-                return [ 503,  { 'msg' : 'Error while fetching events parameters : ' + str(e) } ]
+                return [ 502,  { 'msg' : 'Error while fetching events parameters : ' + str(e) } ]
             evt_info[evt] = {
                 'description' : inst['parameters']['description']['value'],
                 'enabled' : False

@@ -122,6 +122,7 @@ class webservHandler(http.server.BaseHTTPRequestHandler):
         return
 
     def do_ui(self, path):
+        path = path.split('?')[0]
         ui_dir = self.config.web_ui_dir()
         fpath = os.path.join(ui_dir, path)
         if not os.path.normpath(fpath).startswith(ui_dir):

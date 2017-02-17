@@ -60,12 +60,14 @@ class db():
                 "pominabox" : {
                     "properties" : {
                         "event_ts" : {
-                            "type" : "date",
-                            "doc_values" : True
+                            "type" : "date"
                         }
                     }
                 }
             })
+            # Disable the _all field
+            self.mappings[m]['_all'] = { 'enabled' : False }
+
         ret = self.es.indices.create(index=self.index, ignore = 400, body={ 'settings' : self.settings, 'mappings' : self.mappings })
 
         self.indices = [ 'pominabox' ]

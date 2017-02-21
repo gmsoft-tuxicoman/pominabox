@@ -20,6 +20,15 @@ import xmlrpc.client
 import _thread
 import time
 
+def marshal_i8(_, v, w):
+    if (v > (2**31-1) or v < (-2**31)):
+        w("<value><i8>%d</i8></value>" % v)
+    else:
+        w("<value><int>%d</int></value>" % v)
+
+#xmlrpc.client.Marshaller.dispatch[type(MAXINT + 1)] = lambda _, v, w: ((v > MAXINT or v < MININT) ? w("<value><i8>%d</i8></value>" % v) : w("<value><int>%d</int></value>" % v))
+xmlrpc.client.Marshaller.dispatch[int] = marshal_i8
+
 class pomng():
 
     def __init__(self, config, name):
@@ -74,7 +83,7 @@ class pomng():
 
         if len(self.events) > 0:
             self.monitor_session = self.proxy.monitor.start(self.timeout)
-            self.tid = _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
+            self.tid = _thread.start_new_thread(self._monitor_start, (xmlrpc.client.ServerProxy(self.url), ))
             for event_name in self.events:
                 self.events[event_name]['listener_id'] = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", True, True)
                 self.listeners[self.events[event_name]] = event_name
@@ -91,11 +100,11 @@ class pomng():
         self.enabled = False
         return
 
-    def _monitor(self, sessionID, pollProxy):
-        while self.enabled:
+    def _monitor_start(self, pollProxy):
+        while self.enabled and self.monitor_session != -1:
             try:
-                res = pollProxy.monitor.poll(sessionID)
-                if not self.enabled:
+                res = pollProxy.monitor.poll(self.monitor_session)
+                if not self.enabled or self.monitor_session == -1:
                     return
             except Exception as e:
                 print("Error while polling " + self.url + " : " + str(e))
@@ -104,6 +113,13 @@ class pomng():
             if 'events' in res:
                 for evt in res['events']:
                     self._process_event(evt)
+
+    def _monitor_stop(self):
+        if self.monitor_session == -1:
+            return
+        sess = self.monitor_session
+        self.monitor_session = -1
+        self.proxy.monitor.stop(sess)
 
     def _process_event(self, event):
         listener_id = event['listeners'][0]
@@ -125,9 +141,8 @@ class pomng():
         if self.enabled:
             if self.monitor_session == -1:
                 self.monitor_session = self.proxy.monitor.start(self.timeout)
-                _thread.start_new_thread(self._monitor, (self.monitor_session, xmlrpc.client.ServerProxy(self.url), ))
+                _thread.start_new_thread(self._monitor_start, (xmlrpc.client.ServerProxy(self.url), ))
 
-            print("Adding listener")
             listener_id = self.proxy.monitor.eventAddListener(self.monitor_session, event_name, "", False, True)
             self.events[event_name]['listener_id'] = listener_id
             self.listeners[listener_id] = event_name
@@ -142,11 +157,17 @@ class pomng():
         if not event['enabled']:
             return [ 409, { 'msg' : 'Event already not monitored' } ]
 
-        listener_id = self.events[event_name]
+        listener_id = self.events[event_name]['listener_id']
         del self.events[event_name]['listener_id']
         del self.listeners[listener_id]
         if self.monitor_session != -1:
             self.proxy.monitor.eventRemoveListener(self.monitor_session, listener_id)
+
+        if len(self.listeners) == 0:
+            print("Stopping monitoring")
+            self._monitor_stop()
+
+        return [ 200, { 'msg' : 'Event monitoring stopped' } ]
 
     def events_get(self):
         return self.events

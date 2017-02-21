@@ -94,7 +94,15 @@ class webapi():
         if len(req) < 1:
             return [ 400, { 'msg' : 'No node event name specified' } ]
         event_name = req[0]
-        return self.config.pomng_node_event_enable(node_name, event_name)
+
+        if not 'enabled' in params:
+            return [ 400, { 'msg' : 'No action specified' } ]
+
+        if params['enabled']:
+            ret = self.config.pomng_node_event_enable(node_name, event_name)
+        else:
+            ret = self.config.pomng_node_event_disable(node_name, event_name)
+        return ret
 
     def POST_db(self, req, params):
         if len(req) < 1:

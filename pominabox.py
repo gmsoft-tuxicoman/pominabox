@@ -18,21 +18,25 @@
 
 
 import argparse
+import configparser
 import time
 import sys
 import os
 import pominabox
 
 argparser = argparse.ArgumentParser(description='Archive server for pom-ng')
-argparser.add_argument('--config', '-c', dest='config',  help='Configuration file')
-argparser.add_argument('--port', '-p', dest='httpd_port', help='Port to bind to', default=8081, type=int)
-argparser.add_argument('--elasticsearch', '-e', dest='es_nodes', help='Elastic search nodes', default='localhost')
-argparser.add_argument('--web-ui-dir', '-w', dest='ui_dir', help='Path to the web-ui directory', default=os.path.dirname(sys.argv[0]) + '/web-ui' )
-
+argparser.add_argument('--cfgfile', '-c', dest='cfgfile',  help='Configuration file', default='pominabox.ini')
 
 if __name__ == "__main__":
     args = argparser.parse_args()
-    config = pominabox.config(args)
+    cfgfile = configparser.ConfigParser()
+    try:
+        cfgfile.read(args.cfgfile)
+    except Exception as e:
+        print("Error while reading the config file : " + str(e))
+        sys.exit(1)
+
+    config = pominabox.config(cfgfile)
 
     httpsrv = pominabox.webserv(config)
     httpsrv.run()

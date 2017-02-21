@@ -22,8 +22,8 @@ import re
 
 class db():
 
-    def __init__(self, es_nodes):
-        self.es = Elasticsearch(es_nodes)
+    def __init__(self, **kwargs):
+        self.es = Elasticsearch(kwargs['nodes'], **kwargs)
         self.index = 'pominabox'
         self.settings = {
             "number_of_replicas" : 0,

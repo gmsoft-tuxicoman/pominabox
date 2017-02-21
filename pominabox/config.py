@@ -16,16 +16,40 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import pominabox
+import configparser
 import os
 
 class config():
 
-    def __init__(self, args):
+    def __init__(self, cfgfile):
         self.nodes = {}
         self.nodes_inst = {}
-        self.httpd_port = args.httpd_port
-        self.ui_dir = os.path.normpath(args.ui_dir)
-        self.db = pominabox.db(['localhost'])
+
+        self.httpd_port = 8081
+        try:
+            self.httpd_port = cfgfile.getint('main', 'port')
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            pass
+
+        self.ui_dir = '/web-ui'
+        try:
+            self.ui_dir = os.path.normpath(cfgfile.get('main', 'web-ui-path'))
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            pass
+
+        es_opts = {'nodes': 'localhost'}
+        if 'elasticsearch' in cfgfile.sections():
+            es_opt_list = cfgfile.options('elasticsearch')
+            if 'nodes' in es_opt_list:
+                es_opts['nodes'] = cfgfile.get('elasticsearch', 'nodes').split(',')
+            if 'sniff_on_start' in es_opt_list:
+                es_opts['sniff_on_start'] = cfgfile.getboolean('elasticsearch', 'sniff_on_start')
+            if 'sniff_on_connection_failure' in es_opt_list:
+                es_opts['sniff_on_connection_failure'] = cfgfile.getboolean('elasticsearch', 'sniff_on_connection_failure')
+            if 'sniffer_timeout' in es_opt_list:
+                es_opts['sniffer_timeout'] = cfgfile.getint('elasticsearch', 'sniffer_timeout')
+
+        self.db = pominabox.db(**es_opts)
         self.config_index = '.pominabox_config'
 
     def pomng_node_add(self, name, url):

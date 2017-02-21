@@ -89,6 +89,12 @@ class config():
         return node_inst.event_enable(event_name)
 
     def pomng_node_event_disable(self, node_name, event_name):
+        if not node_name in self.nodes_inst:
+            return [ 400, { 'msg' : 'Node does not exists' } ]
+        node_inst = self.nodes_inst[node_name]
+        return node_inst.event_disable(event_name)
+
+    def pomng_node_event_disable(self, node_name, event_name):
         node_inst = self.nodes_inst[node_name]
         return node_inst.event_disable(event_name)
 

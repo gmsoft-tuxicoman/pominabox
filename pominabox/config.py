@@ -31,7 +31,7 @@ class config():
         except (configparser.NoSectionError, configparser.NoOptionError):
             pass
 
-        self.ui_dir = '/web-ui'
+        self.ui_dir = 'web-ui'
         try:
             self.ui_dir = os.path.normpath(cfgfile.get('main', 'web-ui-path'))
         except (configparser.NoSectionError, configparser.NoOptionError):

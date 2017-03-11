@@ -31,6 +31,19 @@ class db():
         }
 
         self.mappings = {
+            "dns_record" : {
+                "properties" : {
+                    "a" : {
+                        "type" : "ip"
+                    },
+                    "aaaa" : {
+                        "type" : "ip"
+                    },
+                    "class" : {
+                        "type" : "byte"
+                    }
+                }
+            },
             "http_request" : {
                 "properties" : {
                     "query_time" : {
@@ -95,6 +108,10 @@ class db():
                 data['query_time'] = self._pomts_to_epochts(data['query_time'])
             if 'response_time' in data:
                 data['response_time'] = self._pomts_to_epochts(data['response_time'])
+        elif doc_type == "dns_record":
+            key = data['values'][0]['key']
+            data[key] = data['values'][0]['value']
+            del data['values']
 
         data['pominabox'] = {
             "event_ts" : int(time.time() * 1000),

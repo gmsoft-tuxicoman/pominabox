@@ -31,6 +31,41 @@ class db():
         }
 
         self.mappings = {
+            "arp_new_sta" : {
+                "properties" : {
+                    "ip_addr" : {
+                        "type" : "ip"
+                    },
+                    "vlan" : {
+                        "type" : "integer"
+                    },
+                    "mac_addr" : {
+                        "type" : "keyword"
+                    },
+                    "input" : {
+                        "type" : "keyword"
+                    }
+                }
+            },
+            "arp_sta_changed" : {
+                "properties" : {
+                    "ip_addr" : {
+                        "type" : "ip"
+                    },
+                    "vlan" : {
+                        "type" : "integer"
+                    },
+                    "old_mac_addr" : {
+                        "type" : "keyword"
+                    },
+                    "new_mac_addr" : {
+                        "type" : "keyword"
+                    },
+                    "input" : {
+                        "type" : "keyword"
+                    }
+                }
+            },
             "dns_record" : {
                 "properties" : {
                     "a" : {
@@ -74,6 +109,9 @@ class db():
                     "properties" : {
                         "event_ts" : {
                             "type" : "date"
+                        },
+                        "pomng_node" : {
+                            "type" : "keyword"
                         }
                     }
                 }
@@ -118,8 +156,11 @@ class db():
             "pomng_node" : pomng_node
         }
 
-        ret = self.es.index(index=self.index, doc_type=doc_type, body=data)
-        print(ret)
+        try:
+            ret = self.es.index(index=self.index, doc_type=doc_type, body=data)
+        except Exception as e:
+            print("Error while saving event to ES : " + str(e))
+            print("Data : " + str(data))
 
     def search_template(self, query):
         if not 'input' in query:
